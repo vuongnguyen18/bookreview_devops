@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: bookpass
       POSTGRES_DB: bookdb
     ports:
-      - "5433:5432"
+      - "5435:5432"   # shift away from 5433 since multiple stacks run
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bookuser"]
       interval: 5s
@@ -23,13 +23,13 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "9001:8000"
+      - "18000:8000"   # instead of 8000, pick a high port
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:80"
+      - "18173:80"     # instead of 5173, pick another high port
     depends_on:
       - backend
