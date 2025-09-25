@@ -33,8 +33,7 @@ pipeline {
         dir('backend') {
           powershell '''
             $ErrorActionPreference = "Stop"
-            $PY = "$env:C:\Users\nguye\AppData\Local\Programs\Python\Python313\python.exe"
-            pip install -r requirements.txt
+            $PY = "C:\Users\nguye\AppData\Local\Programs\Python\Python313\python.exe"            pip install -r requirements.txt
             pytest -q
           '''
         }
