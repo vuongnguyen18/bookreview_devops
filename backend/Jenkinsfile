@@ -2,10 +2,8 @@ pipeline {
   agent any
 
   environment {
-    // Jenkins credentials you already created
-    SONAR_TOKEN = credentials('SONAR_TOKEN')   
-
-    // SonarQube URL (adjust if different)
+    // SonarQube credentials
+    SONAR_TOKEN = credentials('SONAR_TOKEN')
     SONAR_HOST_URL = "http://host.docker.internal:9000"
   }
 
@@ -14,26 +12,32 @@ pipeline {
       steps { checkout scm }
     }
 
-    stage('Check DockerHub Credentials') {
-  steps {
-    withCredentials([usernamePassword(credentialsId: 'dockerhub',
-                                      usernameVariable: 'DOCKERHUB_USER',
-                                      passwordVariable: 'DOCKERHUB_PASS')]) {
-      powershell '''
-        Write-Host "DOCKERHUB_USER: $env:DOCKERHUB_USER"
-        Write-Host "Password length: $($env:DOCKERHUB_PASS.Length)"
-        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
-      '''
-    }
-  }
-}
-
     stage('SetEnv') {
       steps {
         script {
           env.DOCKER_IMAGE      = "vuongnt25/bookreview-backend:${GIT_COMMIT}"
           env.DOCKER_IMAGE_PROD = "vuongnt25/bookreview-backend:prod"
           echo "📦 DOCKER_IMAGE set to: ${env.DOCKER_IMAGE}"
+        }
+      }
+    }
+
+    stage('Check DockerHub Credentials') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                          usernameVariable: 'DOCKERHUB_USER',
+                                          passwordVariable: 'DOCKERHUB_PASS')]) {
+          powershell '''
+            Write-Host "DOCKERHUB_USER: $env:DOCKERHUB_USER"
+            Write-Host "Password length: $($env:DOCKERHUB_PASS.Length)"
+            $cleanPass = $env:DOCKERHUB_PASS.Trim()
+            $cleanPass | docker login -u $env:DOCKERHUB_USER --password-stdin
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
+            } else {
+              Write-Host "✅ Docker login succeeded as $env:DOCKERHUB_USER"
+            }
+          '''
         }
       }
     }
@@ -87,7 +91,8 @@ pipeline {
           powershell '''
             $ErrorActionPreference = "Stop"
             docker logout | Out-Null
-            $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+            $cleanPass = $env:DOCKERHUB_PASS.Trim()
+            $cleanPass | docker login -u $env:DOCKERHUB_USER --password-stdin
             if ($LASTEXITCODE -ne 0) {
               Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
             } else {
@@ -122,7 +127,8 @@ pipeline {
                                           passwordVariable: 'DOCKERHUB_PASS')]) {
           powershell '''
             $ErrorActionPreference = "Stop"
-            $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+            $cleanPass = $env:DOCKERHUB_PASS.Trim()
+            $cleanPass | docker login -u $env:DOCKERHUB_USER --password-stdin
             if ($LASTEXITCODE -ne 0) {
               Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
             } else {
