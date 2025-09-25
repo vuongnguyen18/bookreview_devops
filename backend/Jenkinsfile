@@ -62,6 +62,25 @@ pipeline {
       }
     }
 
+     stage('PushImage') {
+  steps {
+    withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                      usernameVariable: 'DOCKERHUB_USER',
+                                      passwordVariable: 'DOCKERHUB_PASS')]) {
+      powershell '''
+        $ErrorActionPreference = "Stop"
+        docker logout | Out-Null
+        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
+        docker push "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
+        docker push "vuongnt25/bookreview-backend:latest"
+        docker logout | Out-Null
+      '''
+    }
+  }
+}
+
    stage('Security') {
   steps {
     powershell '''
@@ -82,28 +101,6 @@ pipeline {
         --exit-code 1 `
         $image
     '''
-  }
-}
-
-
-
-
-    stage('PushImage') {
-  steps {
-    withCredentials([usernamePassword(credentialsId: 'dockerhub',
-                                      usernameVariable: 'DOCKERHUB_USER',
-                                      passwordVariable: 'DOCKERHUB_PASS')]) {
-      powershell '''
-        $ErrorActionPreference = "Stop"
-        docker logout | Out-Null
-        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
-        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
-        docker push "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
-        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
-        docker push "vuongnt25/bookreview-backend:latest"
-        docker logout | Out-Null
-      '''
-    }
   }
 }
 
