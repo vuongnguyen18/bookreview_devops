@@ -54,7 +54,7 @@ pipeline {
             # use scanner in a Docker container; mount this folder
             docker run --rm `
               -e SONAR_HOST_URL="$env:SONAR_HOST_URL" `
-              -e SONAR_LOGIN="$env:SONAR_TOKEN" `
+              -e SONAR_TOKEN="$env:SONAR_TOKEN" `
               -v "${env:WORKSPACE}\\backend:/usr/src" `
               sonarsource/sonar-scanner-cli
           '''
