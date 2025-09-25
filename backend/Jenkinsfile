@@ -14,6 +14,20 @@ pipeline {
       steps { checkout scm }
     }
 
+    stage('Check DockerHub Credentials') {
+  steps {
+    withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                      usernameVariable: 'DOCKERHUB_USER',
+                                      passwordVariable: 'DOCKERHUB_PASS')]) {
+      powershell '''
+        Write-Host "DOCKERHUB_USER: $env:DOCKERHUB_USER"
+        Write-Host "Password length: $($env:DOCKERHUB_PASS.Length)"
+        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+      '''
+    }
+  }
+}
+
     stage('SetEnv') {
       steps {
         script {
