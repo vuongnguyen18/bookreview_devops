@@ -1,81 +1,122 @@
 pipeline {
   agent any
-    environment {
-    DOCKER_IMAGE = "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
-    DOCKER_IMAGE_PROD = "vuongnt25/bookreview-backend:prod"
-    SONAR_TOKEN = credentials('SONAR_TOKEN')
-    DOCKERHUB_CRED = credentials('dockerhub')
-    SONAR_HOST_URL = "http://host.docker.internal:9000"
+
+  environment {
+    // change to your Docker Hub username
+    DOCKER_IMAGE       = "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
+    DOCKER_IMAGE_PROD  = "vuongnt25/bookreview-backend:prod"
+
+    // Jenkins credentials you already created
+    SONAR_TOKEN        = credentials('SONAR_TOKEN')   // you named it SONAR_TOKEN
+    DOCKERHUB_CRED     = credentials('dockerhub')
+
+    // SonarQube URL (adjust if different)
+    SONAR_HOST_URL     = "http://host.docker.internal:9000"
   }
+
   stages {
     stage('Checkout') {
       steps { checkout scm }
     }
+
     stage('Build') {
-      steps { sh 'docker build -t ${DOCKER_IMAGE} backend' }
+      steps {
+        powershell '''
+          docker build -t "$env:DOCKER_IMAGE" backend
+          docker images | findstr bookreview-backend
+        '''
+      }
     }
+
     stage('Test') {
       steps {
         dir('backend') {
-          sh '''
+          powershell '''
+            $ErrorActionPreference = "Stop"
             python -m venv .venv
-            . .venv/bin/activate
+            .\\.venv\\Scripts\\Activate.ps1
             pip install -r requirements.txt
             pytest -q
           '''
         }
       }
     }
+
     stage('CodeQuality') {
       steps {
         dir('backend') {
-          sh '''
-            docker run --rm                 -e SONAR_HOST_URL="${SONAR_HOST_URL}"                 -e SONAR_LOGIN="${SONAR_TOKEN}"                 -v "$PWD:/usr/src"                 sonarsource/sonar-scanner-cli
+          powershell '''
+            $ErrorActionPreference = "Stop"
+            # use scanner in a Docker container; mount this folder
+            docker run --rm `
+              -e SONAR_HOST_URL="$env:SONAR_HOST_URL" `
+              -e SONAR_LOGIN="$env:SONAR_TOKEN" `
+              -v "${env:WORKSPACE}\\backend:/usr/src" `
+              sonarsource/sonar-scanner-cli
           '''
         }
       }
     }
+
     stage('Security') {
       steps {
         dir('backend') {
-          sh '''
+          powershell '''
+            $ErrorActionPreference = "Continue"
             pip install bandit
-            bandit -c .bandit -r app || true
+            bandit -c .bandit -r app || $true
           '''
         }
-        sh '''
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image ${DOCKER_IMAGE} || true
+        powershell '''
+          $ErrorActionPreference = "Continue"
+          # Trivy via Docker (works on Docker Desktop). If this fails on your host,
+          # we can switch to a Windows binary install.
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock `
+            aquasec/trivy:latest image "$env:DOCKER_IMAGE" || $true
         '''
       }
     }
+
     stage('PushImage') {
       steps {
-        sh '''
-          echo $DOCKERHUB_CRED_PSW | docker login -u $DOCKERHUB_CRED_USR --password-stdin
-          docker push ${DOCKER_IMAGE}
+        powershell '''
+          $ErrorActionPreference = "Stop"
+          $user = $env:DOCKERHUB_CRED_USR
+          $pass = $env:DOCKERHUB_CRED_PSW
+          $pass | docker login -u $user --password-stdin
+          docker push "$env:DOCKER_IMAGE"
         '''
       }
     }
+
     stage('Deploy:Staging') {
       steps {
-        sh 'docker compose up -d --build'
-        sh 'curl -sf http://localhost:8000/health'
-      }
-    }
-    stage('Release') {
-      steps {
-        sh '''
-          docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE_PROD}
-          echo $DOCKERHUB_CRED_PSW | docker login -u $DOCKERHUB_CRED_USR --password-stdin
-          docker push ${DOCKER_IMAGE_PROD}
+        powershell '''
+          docker compose up -d --build
+          # health check using PowerShell's web cmdlets
+          (Invoke-WebRequest -UseBasicParsing http://localhost:8000/health).Content | Write-Host
         '''
       }
     }
+
+    stage('Release') {
+      steps {
+        powershell '''
+          $ErrorActionPreference = "Stop"
+          docker tag "$env:DOCKER_IMAGE" "$env:DOCKER_IMAGE_PROD"
+          $user = $env:DOCKERHUB_CRED_USR
+          $pass = $env:DOCKERHUB_CRED_PSW
+          $pass | docker login -u $user --password-stdin
+          docker push "$env:DOCKER_IMAGE_PROD"
+        '''
+      }
+    }
+
     stage('Monitoring') {
       steps {
-        sh '''
+        powershell '''
           docker compose -f monitoring/docker-compose.monitor.yml up -d
-          curl -sf http://localhost:8000/metrics | head -n 5
+          (Invoke-WebRequest -UseBasicParsing http://localhost:8000/metrics).Content.Split("`n")[0..4] -join "`n" | Write-Host
         '''
       }
     }
