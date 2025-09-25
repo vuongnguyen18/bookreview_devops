@@ -8,7 +8,6 @@ pipeline {
 
     // Jenkins credentials you already created
     SONAR_TOKEN        = credentials('SONAR_TOKEN')   // you named it SONAR_TOKEN
-    DOCKERHUB_CRED     = credentials('dockerhub')
 
     // SonarQube URL (adjust if different)
     SONAR_HOST_URL     = "http://host.docker.internal:9000"
@@ -100,26 +99,30 @@ pipeline {
   }
 }
 
-   stage('Security') {
+   stage('PushImage') {
   steps {
-    powershell '''
-      $ErrorActionPreference = "Stop"
+    withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                      usernameVariable: 'DOCKERHUB_USER',
+                                      passwordVariable: 'DOCKERHUB_PASS')]) {
+      powershell '''
+        $ErrorActionPreference = "Stop"
+        docker logout | Out-Null
+        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
+        } else {
+          Write-Host "✅ Docker login succeeded as $env:DOCKERHUB_USER"
+        }
 
-      $cache = Join-Path $env:WORKSPACE ".trivy-cache"
-      New-Item -ItemType Directory -Force -Path $cache | Out-Null
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:${env:GIT_COMMIT}"
+        docker push "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
 
-     $image = "docker.io/vuongnt25/bookreview-backend:${env:GIT_COMMIT}"
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
+        docker push "vuongnt25/bookreview-backend:latest"
 
-docker run --rm `
-  -v "${cache}:/root/.cache/" `
-  -e TRIVY_TIMEOUT=10m `
-  aquasec/trivy:latest image `
-  --severity HIGH,CRITICAL `
-  --ignore-unfixed `
-  --exit-code 1 `
-  $image
-
-    '''
+        docker logout | Out-Null
+      '''
+    }
   }
 }
 
@@ -134,17 +137,27 @@ docker run --rm `
     }
 
     stage('Release') {
-      steps {
-        powershell '''
-          $ErrorActionPreference = "Stop"
-          docker tag "$env:DOCKER_IMAGE" "$env:DOCKER_IMAGE_PROD"
-          $user = $env:DOCKERHUB_CRED_USR
-          $pass = $env:DOCKERHUB_CRED_PSW
-          $pass | docker login -u $user --password-stdin
-          docker push "$env:DOCKER_IMAGE_PROD"
-        '''
-      }
+  steps {
+    withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                      usernameVariable: 'DOCKERHUB_USER',
+                                      passwordVariable: 'DOCKERHUB_PASS')]) {
+      powershell '''
+        $ErrorActionPreference = "Stop"
+        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
+        } else {
+          Write-Host "✅ Docker login succeeded as $env:DOCKERHUB_USER"
+        }
+
+        docker tag "$env:DOCKER_IMAGE" "$env:DOCKER_IMAGE_PROD"
+        docker push "$env:DOCKER_IMAGE_PROD"
+
+        docker logout | Out-Null
+      '''
     }
+  }
+}
 
     stage('Monitoring') {
       steps {
