@@ -117,7 +117,7 @@ pipeline {
       }
     }
 
-    stage('Security') {
+   stage('Security') {
   steps {
     powershell '''
       $ErrorActionPreference = "Stop"
@@ -130,6 +130,7 @@ pipeline {
     '''
   }
 }
+
 
 
     stage('Deploy:Staging') {
