@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>BookReview Frontend</title>
+</head>
+<body>
+  <h1>BookReview Frontend</h1>
+  <p>Backend health: <span id="health">checking...</span></p>
+  <script>
+    fetch('/api/health').then(r => r.json()).then(j => {
+      document.getElementById('health').textContent = j.status;
+    }).catch(() => {
+      document.getElementById('health').textContent = 'unreachable';
+    });
+  </script>
+</body>
+</html>
