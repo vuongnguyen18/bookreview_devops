@@ -86,32 +86,32 @@ pipeline {
     }
 
     stage('PushImage') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub',
-                                          usernameVariable: 'DOCKERHUB_USER',
-                                          passwordVariable: 'DOCKERHUB_PASS')]) {
-          powershell '''
-            $ErrorActionPreference = "Stop"
-            docker logout | Out-Null
-            $cleanPass = $env:DOCKERHUB_PASS.Trim()
-            $cleanPass | docker login -u $env:DOCKERHUB_USER --password-stdin
-            if ($LASTEXITCODE -ne 0) {
-              Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
-            } else {
-              Write-Host "✅ Docker login succeeded as $env:DOCKERHUB_USER"
-            }
+  steps {
+    withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                      usernameVariable: 'DOCKERHUB_USER',
+                                      passwordVariable: 'DOCKERHUB_PASS')]) {
+      powershell '''
+        $ErrorActionPreference = "Stop"
+        docker logout | Out-Null
 
-            docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
-            docker push "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
-
-            docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
-            docker push "vuongnt25/bookreview-backend:latest"
-
-            docker logout | Out-Null
-          '''
+        [System.Text.Encoding]::UTF8.GetBytes($env:DOCKERHUB_PASS) | docker login -u $env:DOCKERHUB_USER --password-stdin
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Docker login failed – check username/token"
+        } else {
+          Write-Host "✅ Docker login succeeded as $env:DOCKERHUB_USER"
         }
-      }
+
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
+        docker push "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
+
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
+        docker push "vuongnt25/bookreview-backend:latest"
+
+        docker logout | Out-Null
+      '''
     }
+  }
+}
 
     stage('Deploy:Staging') {
       steps {
@@ -129,8 +129,8 @@ pipeline {
                                           passwordVariable: 'DOCKERHUB_PASS')]) {
           powershell '''
             $ErrorActionPreference = "Stop"
-            $cleanPass = $env:DOCKERHUB_PASS.Trim()
-            $cleanPass | docker login -u $env:DOCKERHUB_USER --password-stdin
+            [System.Text.Encoding]::UTF8.GetBytes($env:DOCKERHUB_PASS) | docker login -u $env:DOCKERHUB_USER --password-stdin
+
             if ($LASTEXITCODE -ne 0) {
               Write-Error "❌ Docker login failed – check username/token in Jenkins credentials"
             } else {
