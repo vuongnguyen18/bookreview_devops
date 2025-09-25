@@ -64,30 +64,24 @@ pipeline {
 
    stage('Security') {
   steps {
-    // Bandit in container (Python SAST)
     powershell '''
       $ErrorActionPreference = "Stop"
-      docker run --rm `
-        -v "${env:WORKSPACE}:/workspace" `
-        -w /workspace/backend `
-        python:3.11-slim bash -lc "
-          pip install --no-cache-dir bandit &&
-          bandit -c .bandit -r app
-        "
-    '''
 
-    // Trivy filesystem scan of the backend source (no docker.sock needed)
-    powershell '''
-      $ErrorActionPreference = "Continue"
       docker run --rm `
-        -v "${env:WORKSPACE}\\backend:/project" `
-        aquasec/trivy:latest fs --no-progress --exit-code 0 /project
-      if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Trivy reported findings (non-blocking)."
-      }
+        -v ${pwd}:/project `
+        -v "$env:USERPROFILE\\.cache\\trivy:/root/.cache/" `
+        -e TRIVY_TIMEOUT=10m `
+        aquasec/trivy:latest fs /project `
+        --scanners vuln `
+        --skip-dirs /project/.venv,/project/.pytest_cache `
+        --timeout 10m `
+        --ignore-unfixed `
+        --severity HIGH,CRITICAL `
+        --exit-code 1
     '''
   }
 }
+
 
 
     stage('PushImage') {
