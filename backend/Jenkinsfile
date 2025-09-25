@@ -134,13 +134,15 @@ pipeline {
 
 
     stage('Deploy:Staging') {
-      steps {
-        powershell '''
-          docker compose up -d --build
-          (Invoke-WebRequest -UseBasicParsing http://localhost:8000/health).Content | Write-Host
-        '''
-      }
-    }
+  steps {
+    powershell '''
+      docker compose down || echo "No containers to stop"
+      docker compose up -d --build
+      (Invoke-WebRequest -UseBasicParsing http://localhost:9001/health).Content | Write-Host
+    '''
+  }
+}
+
 
     stage('Release') {
       steps {
