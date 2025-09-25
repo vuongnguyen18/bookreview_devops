@@ -91,16 +91,30 @@ pipeline {
 
 
     stage('PushImage') {
-      steps {
-        powershell '''
-          $ErrorActionPreference = "Stop"
-          $user = vuongnt25
-          $pass = dockerhub
-          $pass | docker login -u $user --password-stdin
-          docker push "$env:DOCKER_IMAGE"
-        '''
-      }
+  steps {
+    withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                      usernameVariable: 'DOCKERHUB_USER',
+                                      passwordVariable: 'DOCKERHUB_PASS')]) {
+      powershell '''
+        $ErrorActionPreference = "Stop"
+
+        docker logout | Out-Null
+
+        # Login with PAT from Jenkins credentials (password field holds the PAT)
+        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
+
+        # Push the commit-tagged image built earlier
+        docker push "$env:DOCKER_IMAGE"
+
+        # Optionally also push :latest
+        docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
+        docker push "vuongnt25/bookreview-backend:latest"
+
+        docker logout | Out-Null
+      '''
     }
+  }
+}
 
     stage('Deploy:Staging') {
       steps {
