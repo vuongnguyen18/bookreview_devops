@@ -29,16 +29,20 @@ pipeline {
     }
 
     stage('Test') {
-      steps {
-        dir('backend') {
-          powershell '''
-            $ErrorActionPreference = "Stop"
-            $PY = "C:\\Users\\nguye\\AppData\\Local\\Programs\\Python\\Python313\\python.exe"
-            pytest -q
-          '''
-        }
-      }
+  steps {
+    dir('backend') {
+      powershell '''
+        $ErrorActionPreference = "Stop"
+        $PY = "C:\\Users\\nguye\\AppData\\Local\\Programs\\Python\\Python313\\python.exe"
+        & $PY -m venv .venv
+        .\\.venv\\Scripts\\Activate.ps1
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        .\\.venv\\Scripts\\pytest -q
+      '''
     }
+  }
+}
 
     stage('CodeQuality') {
       steps {
