@@ -3,7 +3,7 @@ pipeline {
     environment {
     DOCKER_IMAGE = "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
     DOCKER_IMAGE_PROD = "vuongnt25/bookreview-backend:prod"
-    SONAR_TOKEN = credentials('sonar-token')
+    SONAR_TOKEN = credentials('SONAR_TOKEN')
     DOCKERHUB_CRED = credentials('dockerhub')
     SONAR_HOST_URL = "http://host.docker.internal:9000"
   }
