@@ -1,8 +1,8 @@
 pipeline {
   agent any
-  environment {
-    DOCKER_IMAGE = "yourdockerhub/bookreview-backend:${env.GIT_COMMIT}"
-    DOCKER_IMAGE_PROD = "yourdockerhub/bookreview-backend:prod"
+    environment {
+    DOCKER_IMAGE = "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
+    DOCKER_IMAGE_PROD = "vuongnt25/bookreview-backend:prod"
     SONAR_TOKEN = credentials('sonar-token')
     DOCKERHUB_CRED = credentials('dockerhub')
     SONAR_HOST_URL = "http://host.docker.internal:9000"
