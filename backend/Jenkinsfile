@@ -68,11 +68,12 @@ pipeline {
                                       usernameVariable: 'DOCKERHUB_USER',
                                       passwordVariable: 'DOCKERHUB_PASS')]) {
       powershell '''
+      Write-Host "DOCKERHUB_USER: $env:DOCKERHUB_USER"
+    Write-Host "DOCKERHUB_PASS: $env:DOCKERHUB_PASS"
+
         $ErrorActionPreference = "Stop"
         docker logout | Out-Null
         $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
-        $env:DOCKERHUB_PASS | docker login -u $env:DOCKERHUB_USER --password-stdin
-docker info
         docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
         docker push "vuongnt25/bookreview-backend:${env.GIT_COMMIT}"
         docker tag "$env:DOCKER_IMAGE" "vuongnt25/bookreview-backend:latest"
