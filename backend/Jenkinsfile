@@ -94,8 +94,8 @@ pipeline {
       steps {
         powershell '''
           $ErrorActionPreference = "Stop"
-          $user = $env:DOCKERHUB_CRED_USR
-          $pass = $env:DOCKERHUB_CRED_PSW
+          $user = vuongnt25
+          $pass = dockerhub
           $pass | docker login -u $user --password-stdin
           docker push "$env:DOCKER_IMAGE"
         '''
