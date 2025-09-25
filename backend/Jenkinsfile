@@ -137,7 +137,12 @@ pipeline {
   steps {
     powershell '''
       Write-Host "🛑 Stopping old bookreview_full stack if running..."
-      docker compose -p bookreview_full down -v || echo "No old containers"
+      try {
+    docker compose -p bookreview_full down -v
+    Write-Host "🛑 Old bookreview_full stack stopped"
+} catch {
+    Write-Host "ℹ No old containers to stop"
+}
 
       Write-Host "🚀 Starting fresh devops-hd stack..."
       docker compose -p devops-hd up -d --build
