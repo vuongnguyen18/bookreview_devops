@@ -30,17 +30,17 @@ pipeline {
 
     stage('Test') {
   steps {
-    dir('backend') {
-      powershell '''
-        $ErrorActionPreference = "Stop"
-        $PY = "C:\\Users\\nguye\\AppData\\Local\\Programs\\Python\\Python313\\python.exe"
-        & $PY -m venv .venv
-        .\\.venv\\Scripts\\Activate.ps1
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        .\\.venv\\Scripts\\pytest -q
-      '''
-    }
+    powershell '''
+      $ErrorActionPreference = "Stop"
+      docker run --rm `
+        -v "${env:WORKSPACE}:/workspace" `
+        -w /workspace/backend `
+        python:3.11-slim bash -lc "
+          python -m pip install --upgrade pip &&
+          pip install --no-cache-dir -r requirements.txt &&
+          pytest -q
+        "
+    '''
   }
 }
 
@@ -61,23 +61,27 @@ pipeline {
     }
 
     stage('Security') {
-      steps {
-        dir('backend') {
-          powershell '''
-            $ErrorActionPreference = "Continue"
-            pip install bandit
-            bandit -c .bandit -r app || $true
-          '''
-        }
-        powershell '''
-          $ErrorActionPreference = "Continue"
-          # Trivy via Docker (works on Docker Desktop). If this fails on your host,
-          # we can switch to a Windows binary install.
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock `
-            aquasec/trivy:latest image "$env:DOCKER_IMAGE" || $true
-        '''
-      }
-    }
+  steps {
+    // Bandit in container
+    powershell '''
+      $ErrorActionPreference = "Continue"
+      docker run --rm `
+        -v "${env:WORKSPACE}:/workspace" `
+        -w /workspace/backend `
+        python:3.11-slim bash -lc "
+          pip install bandit &&
+          bandit -c .bandit -r app || true
+        "
+    '''
+
+    // Trivy against the built image (still on host Docker)
+    powershell '''
+      $ErrorActionPreference = "Continue"
+      docker run --rm -v /var/run/docker.sock:/var/run/docker.sock `
+        aquasec/trivy:latest image "$env:DOCKER_IMAGE" || $true
+    '''
+  }
+}
 
     stage('PushImage') {
       steps {
