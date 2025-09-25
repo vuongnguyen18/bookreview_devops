@@ -136,12 +136,21 @@ pipeline {
     stage('Deploy:Staging') {
   steps {
     powershell '''
-      docker compose down || echo "No containers to stop"
+      $ErrorActionPreference = "Continue"
+      try {
+        docker compose down
+      } catch {
+        Write-Host "No containers to stop"
+      }
+
       docker compose up -d --build
+
+      # health check
       (Invoke-WebRequest -UseBasicParsing http://localhost:9001/health).Content | Write-Host
     '''
   }
 }
+
 
 
     stage('Release') {
