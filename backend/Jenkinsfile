@@ -62,28 +62,33 @@ pipeline {
       }
     }
 
-    stage('Security') {
+    stage('Security') {stage('Security') {
   steps {
-    // Bandit in container
+    // Bandit in container (Python SAST)
     powershell '''
-      $ErrorActionPreference = "Continue"
+      $ErrorActionPreference = "Stop"
       docker run --rm `
         -v "${env:WORKSPACE}:/workspace" `
         -w /workspace/backend `
         python:3.11-slim bash -lc "
-          pip install bandit &&
-          bandit -c .bandit -r app || true
+          pip install --no-cache-dir bandit &&
+          bandit -c .bandit -r app
         "
     '''
 
-    // Trivy against the built image (still on host Docker)
+    // Trivy filesystem scan of the backend source (no docker.sock needed)
     powershell '''
       $ErrorActionPreference = "Continue"
-      docker run --rm -v /var/run/docker.sock:/var/run/docker.sock `
-        aquasec/trivy:latest image "$env:DOCKER_IMAGE" || $true
+      docker run --rm `
+        -v "${env:WORKSPACE}\\backend:/project" `
+        aquasec/trivy:latest fs --no-progress --exit-code 0 /project
+      if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Trivy reported findings (non-blocking)."
+      }
     '''
   }
 }
+
 
     stage('PushImage') {
       steps {

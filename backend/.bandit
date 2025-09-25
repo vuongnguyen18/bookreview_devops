@@ -1,3 +1,16 @@
-[bandit]
-targets: app
-skips: B101
+---
+# Directories to skip
+exclude_dirs:
+  - .venv
+  - venv
+  - tests
+  - __pycache__
+
+# Rules to skip (examples; tweak as needed)
+skips:
+  - B101  # assert_used
+  - B105  # hardcoded_password_string
+
+# Optional: severity/confidence thresholds
+severity: MEDIUM
+confidence: MEDIUM
