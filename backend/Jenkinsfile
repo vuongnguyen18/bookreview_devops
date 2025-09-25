@@ -63,24 +63,23 @@ pipeline {
     }
 
    stage('Security') {
-  steps {
-    powershell '''
-      $ErrorActionPreference = "Stop"
+    steps {
+      powershell '''
+  $ErrorActionPreference = "Stop"
 
-      docker run --rm `
-        -v ${pwd}:/project `
-        -v "$env:USERPROFILE\\.cache\\trivy:/root/.cache/" `
-        -e TRIVY_TIMEOUT=10m `
-        aquasec/trivy:latest fs /project `
-        --scanners vuln `
-        --skip-dirs /project/.venv,/project/.pytest_cache `
-        --timeout 10m `
-        --ignore-unfixed `
-        --severity HIGH,CRITICAL `
-        --exit-code 1
-    '''
+  docker run --rm `
+    -v "${env:WORKSPACE}\\backend:/project" `
+    -v "$env:USERPROFILE\\.cache\\trivy:/root/.cache/" `
+    aquasec/trivy:latest fs /project `
+    --scanners vuln `
+    --skip-dirs .venv,.pytest_cache `
+    --timeout 10m `
+    --ignore-unfixed `
+    --severity HIGH,CRITICAL `
+    --exit-code 1
+'''
+    }
   }
-}
 
 
 
