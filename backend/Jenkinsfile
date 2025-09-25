@@ -62,7 +62,7 @@ pipeline {
       }
     }
 
-    stage('Security') {stage('Security') {
+   stage('Security') {
   steps {
     // Bandit in container (Python SAST)
     powershell '''
