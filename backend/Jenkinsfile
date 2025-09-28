@@ -28,9 +28,6 @@ pipeline {
       }
     }
 
-
-    
-
     stage('Check DockerHub Credentials') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'dockerhub',
